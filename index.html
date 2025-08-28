@@ -1,40 +1,40 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
   <title>Onchain Calculator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
     body {
+      background: #111;
+      color: white;
+      font-family: Arial, sans-serif;
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 100vh;
-      background: #0d0d0d;
-      color: #fff;
-      font-family: Arial, sans-serif;
+      height: 100vh;
       margin: 0;
     }
     .calculator {
-      width: 100%;
-      max-width: 400px;
+      width: 350px;
       background: #1a1a1a;
-      border-radius: 16px;
       padding: 20px;
-      box-shadow: 0 0 20px rgba(0,0,0,0.6);
+      border-radius: 20px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.5);
     }
     #display {
       width: 100%;
-      height: 70px;
-      font-size: 28px;
+      height: 80px;
+      font-size: 32px;
+      font-weight: bold;
       text-align: right;
+      margin-bottom: 15px;
+      border-radius: 10px;
       padding: 10px;
       background: #000;
-      border: none;
-      border-radius: 8px;
-      margin-bottom: 20px;
       color: #0f0;
+      border: none;
     }
     .buttons {
       display: grid;
@@ -42,142 +42,167 @@
       gap: 12px;
     }
     button {
-      height: 70px;
-      font-size: 24px;
+      font-size: 26px;
       font-weight: bold;
-      border: none;
+      padding: 20px;
       border-radius: 12px;
+      border: none;
       background: #333;
-      color: #fff;
-      transition: background 0.2s;
+      color: white;
+      cursor: pointer;
+      transition: 0.2s;
     }
     button:hover {
-      background: #555;
-      cursor: pointer;
+      background: #444;
     }
-    .wide {
-      grid-column: span 2;
+    .op {
+      background: #ff9800;
+      color: black;
     }
-    #connectWallet {
+    .op:hover {
+      background: #e68900;
+    }
+    #connectBtn {
       width: 100%;
+      padding: 15px;
+      font-size: 20px;
       margin-bottom: 15px;
-      padding: 12px;
-      font-size: 18px;
       border-radius: 12px;
       border: none;
-      background: #007bff;
-      color: #fff;
+      background: #2196f3;
+      color: white;
       cursor: pointer;
-      font-weight: bold;
     }
-    #connectWallet:hover {
-      background: #0056b3;
+    #connectBtn:hover {
+      background: #1976d2;
     }
-    #txStatus {
-      margin-top: 15px;
-      font-size: 16px;
-      text-align: center;
-      color: #0f0;
-      min-height: 20px;
+    @media (max-width: 500px) {
+      .calculator { width: 95%; }
+      button { font-size: 22px; padding: 18px; }
+      #display { font-size: 28px; }
     }
   </style>
 </head>
 <body>
   <div class="calculator">
-    <button id="connectWallet">🔗 Connect Wallet</button>
-    <input id="display" disabled />
+    <button id="connectBtn">🔗 Connect Wallet</button>
+    <input type="text" id="display" disabled value="0">
     <div class="buttons">
-      <button onclick="appendNumber('7')">7</button>
-      <button onclick="appendNumber('8')">8</button>
-      <button onclick="appendNumber('9')">9</button>
-      <button onclick="setOperation('add')">+</button>
+      <button onclick="press('7')">7</button>
+      <button onclick="press('8')">8</button>
+      <button onclick="press('9')">9</button>
+      <button class="op" onclick="setOp('div')">÷</button>
 
-      <button onclick="appendNumber('4')">4</button>
-      <button onclick="appendNumber('5')">5</button>
-      <button onclick="appendNumber('6')">6</button>
-      <button onclick="setOperation('sub')">-</button>
+      <button onclick="press('4')">4</button>
+      <button onclick="press('5')">5</button>
+      <button onclick="press('6')">6</button>
+      <button class="op" onclick="setOp('mul')">×</button>
 
-      <button onclick="appendNumber('1')">1</button>
-      <button onclick="appendNumber('2')">2</button>
-      <button onclick="appendNumber('3')">3</button>
-      <button onclick="setOperation('mul')">×</button>
+      <button onclick="press('1')">1</button>
+      <button onclick="press('2')">2</button>
+      <button onclick="press('3')">3</button>
+      <button class="op" onclick="setOp('sub')">−</button>
 
-      <button onclick="appendNumber('0')" class="wide">0</button>
+      <button onclick="press('0')">0</button>
       <button onclick="clearDisplay()">C</button>
-      <button onclick="setOperation('div')">÷</button>
-
-      <button onclick="calculate()" class="wide">=</button>
+      <button onclick="calculate()">=</button>
+      <button class="op" onclick="setOp('add')">+</button>
     </div>
-    <div id="txStatus"></div>
   </div>
 
   <script>
-    let provider, signer, contract;
-    const contractAddress = "0x0640761a8AaF04Ef63708789189b8beD47AA338A";
-    const contractABI = [
-      {"inputs":[{"internalType":"int256","name":"a","type":"int256"},{"internalType":"int256","name":"b","type":"int256"}],"name":"add","outputs":[{"internalType":"int256","name":"","type":"int256"}],"stateMutability":"nonpayable","type":"function"},
-      {"inputs":[{"internalType":"int256","name":"a","type":"int256"},{"internalType":"int256","name":"b","type":"int256"}],"name":"sub","outputs":[{"internalType":"int256","name":"","type":"int256"}],"stateMutability":"nonpayable","type":"function"},
-      {"inputs":[{"internalType":"int256","name":"a","type":"int256"},{"internalType":"int256","name":"b","type":"int256"}],"name":"mul","outputs":[{"internalType":"int256","name":"","type":"int256"}],"stateMutability":"nonpayable","type":"function"},
-      {"inputs":[{"internalType":"int256","name":"a","type":"int256"},{"internalType":"int256","name":"b","type":"int256"}],"name":"div","outputs":[{"internalType":"int256","name":"","type":"int256"}],"stateMutability":"nonpayable","type":"function"}
+    const CONTRACT_ADDRESS = "0x0640761a8AaF04Ef63708789189b8beD47AA338A";
+    const CONTRACT_ABI = [
+      "function add(uint256 a, uint256 b) public returns (uint256)",
+      "function sub(uint256 a, uint256 b) public returns (uint256)",
+      "function mul(uint256 a, uint256 b) public returns (uint256)",
+      "function div(uint256 a, uint256 b) public returns (uint256)"
     ];
 
-    let currentInput = "";
-    let firstNumber = null;
-    let operation = null;
+    let provider, signer, contract;
+    let current = "";
+    let num1 = null;
+    let operator = null;
 
-    function updateDisplay(val) {
-      document.getElementById("display").value = val;
+    const display = document.getElementById("display");
+    const connectBtn = document.getElementById("connectBtn");
+
+    async function connectWallet() {
+      if (!window.ethereum) {
+        alert("MetaMask not found!");
+        return;
+      }
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = provider.getSigner();
+      contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+      // Switch to Fluent Testnet
+      try {
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: "0x5202" }] // 20994 in hex
+        });
+      } catch (e) {
+        if (e.code === 4902) {
+          await window.ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [{
+              chainId: "0x5202",
+              chainName: "Fluent Testnet",
+              rpcUrls: ["https://rpc.testnet.fluent.xyz"],
+              nativeCurrency: { name: "Ethereum", symbol: "ETH", decimals: 18 },
+              blockExplorerUrls: ["https://testnet.fluentscan.xyz"]
+            }]
+          });
+        }
+      }
+      connectBtn.innerText = "✅ Connected";
     }
 
-    function appendNumber(num) {
-      currentInput += num;
-      updateDisplay(currentInput);
+    connectBtn.onclick = connectWallet;
+
+    function press(num) {
+      current += num;
+      display.value = current;
     }
 
     function clearDisplay() {
-      currentInput = "";
-      firstNumber = null;
-      operation = null;
-      updateDisplay("");
-      document.getElementById("txStatus").innerText = "";
+      current = "";
+      num1 = null;
+      operator = null;
+      display.value = "0";
     }
 
-    function setOperation(op) {
-      if (currentInput === "") return;
-      firstNumber = parseInt(currentInput);
-      operation = op;
-      currentInput = "";
-      updateDisplay("");
-    }
-
-    async function connectWallet() {
-      if (window.ethereum) {
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        signer = provider.getSigner();
-        contract = new ethers.Contract(contractAddress, contractABI, signer);
-        document.getElementById("connectWallet").innerText = "✅ Wallet Connected";
-      } else {
-        alert("Please install MetaMask!");
-      }
+    function setOp(op) {
+      if (current === "") return;
+      num1 = current;
+      current = "";
+      operator = op;
     }
 
     async function calculate() {
-      if (!operation || firstNumber === null || currentInput === "") return;
-      const secondNumber = parseInt(currentInput);
+      if (!operator || !num1 || current === "") return;
+      let num2 = current;
+      display.value = "⏳ Sending Tx...";
       try {
-        const tx = await contract[operation](firstNumber, secondNumber);
-        document.getElementById("txStatus").innerText = "⏳ Sending Tx...";
-        const receipt = await tx.wait();
-        document.getElementById("txStatus").innerText = "✅ Tx Hash: " + receipt.transactionHash;
-        clearDisplay();
-      } catch (error) {
-        console.error(error);
-        document.getElementById("txStatus").innerText = "❌ Tx Failed";
-      }
-    }
+        let tx;
+        if (operator === "add") tx = await contract.add(num1, num2);
+        if (operator === "sub") tx = await contract.sub(num1, num2);
+        if (operator === "mul") tx = await contract.mul(num1, num2);
+        if (operator === "div") tx = await contract.div(num1, num2);
 
-    document.getElementById("connectWallet").addEventListener("click", connectWallet);
+        display.value = "⏳ Waiting Confirm...";
+        let receipt = await tx.wait();
+        display.value = "✅ Tx: " + receipt.transactionHash.slice(0,12) + "...";
+      } catch (err) {
+        console.error(err);
+        display.value = "❌ Tx Failed";
+      }
+      current = "";
+      num1 = null;
+      operator = null;
+    }
   </script>
 </body>
 </html>
