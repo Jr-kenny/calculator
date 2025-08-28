@@ -272,9 +272,12 @@
                     if (waitingForNext) {
                         currentNumber = value;
                         waitingForNext = false;
-                        displayPrevious.textContent = '';
-                    } else if (currentNumber === '0') {
+                        // The previous display is NOT cleared here, which is the fix.
+                    } else if (currentNumber === '0' && value !== '.') {
                         currentNumber = value;
+                    } else if (value === '.' && currentNumber.includes('.')) {
+                        // Do nothing if a decimal is already present
+                        return;
                     } else {
                         currentNumber += value;
                     }
@@ -287,6 +290,7 @@
                     operation = op;
                     waitingForNext = true;
                     displayPrevious.textContent = `${previousNumber} ${operations[operation]}`;
+                    currentNumber = '0'; // Clear the current number display
                 }
 
                 displayCurrent.textContent = currentNumber;
