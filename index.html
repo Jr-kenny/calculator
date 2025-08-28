@@ -69,7 +69,7 @@
         }
         .display {
             background-color: #000000;
-            color: #00e500; /* Green for numbers */
+            color: #ffffff;
             font-size: 3rem;
             font-weight: 300;
             padding: 1rem;
@@ -78,22 +78,25 @@
             margin-bottom: 1rem;
             min-height: 5rem;
             display: flex;
+            flex-direction: column;
             align-items: flex-end;
             justify-content: flex-end;
             word-break: break-all;
-            position: relative;
         }
-        .display-text {
+        .display-previous {
+            font-size: 1.5rem;
+            color: #a0a0a0;
+            min-height: 2rem;
             overflow: hidden;
-            text-overflow: ellipsis;
             white-space: nowrap;
         }
-        .display-message {
-            position: absolute;
-            top: 0.5rem;
-            right: 0.5rem;
-            font-size: 0.75rem;
-            color: #888;
+        .display-current {
+            font-size: 3rem;
+            color: #00e500;
+            min-height: 3rem;
+            overflow: hidden;
+            white-space: nowrap;
+            font-weight: 500;
         }
     </style>
 </head>
@@ -112,30 +115,35 @@
 
         <!-- Calculator Display -->
         <div class="display">
-            <span id="display-number">0</span>
+            <span id="display-previous" class="display-previous"></span>
+            <span id="display-current" class="display-current">0</span>
         </div>
 
         <!-- Calculator Buttons Grid -->
         <div class="button-grid">
+            <button class="btn btn-gray" id="clear-btn">C</button>
+            <button class="btn btn-gray" id="backspace-btn">⌫</button>
+            <button class="btn btn-orange" data-op="mod">%</button>
+            <button class="btn btn-orange" data-op="div">÷</button>
+            
             <button class="btn btn-gray" data-val="7">7</button>
             <button class="btn btn-gray" data-val="8">8</button>
             <button class="btn btn-gray" data-val="9">9</button>
-            <button class="btn btn-orange" data-op="div">÷</button>
+            <button class="btn btn-orange" data-op="mul">×</button>
             
             <button class="btn btn-gray" data-val="4">4</button>
             <button class="btn btn-gray" data-val="5">5</button>
             <button class="btn btn-gray" data-val="6">6</button>
-            <button class="btn btn-orange" data-op="mul">×</button>
+            <button class="btn btn-orange" data-op="sub">-</button>
             
             <button class="btn btn-gray" data-val="1">1</button>
             <button class="btn btn-gray" data-val="2">2</button>
             <button class="btn btn-gray" data-val="3">3</button>
-            <button class="btn btn-orange" data-op="sub">-</button>
-            
-            <button class="btn btn-gray col-span-1" data-val="0">0</button>
-            <button class="btn btn-gray" id="clear-btn">C</button>
-            <button class="btn btn-gray" id="calculate-btn">=</button>
             <button class="btn btn-orange" data-op="add">+</button>
+            
+            <button class="btn btn-gray col-span-2" data-val="0">0</button>
+            <button class="btn btn-gray" data-val=".">.</button>
+            <button class="btn btn-orange" id="calculate-btn">=</button>
         </div>
 
     </div>
@@ -169,10 +177,12 @@
 
             // DOM elements
             const connectBtn = document.getElementById('connect-wallet-btn');
-            const display = document.getElementById('display-number');
+            const displayPrevious = document.getElementById('display-previous');
+            const displayCurrent = document.getElementById('display-current');
             const allButtons = document.querySelectorAll('.btn');
             const calculateBtn = document.getElementById('calculate-btn');
             const clearBtn = document.getElementById('clear-btn');
+            const backspaceBtn = document.getElementById('backspace-btn');
 
             let provider, signer, contract, userAddress;
             let currentNumber = '0';
@@ -181,15 +191,14 @@
             let waitingForNext = false;
 
             const operations = {
-                add: "add", sub: "sub", mul: "mul", div: "div", mod: "mod",
-                iMin: "iMin", iMax: "iMax", iAvg: "iAvg", percent: "percent",
-                fAdd: "fAdd", fSub: "fSub", fMul: "fMul", fDiv: "fDiv",
+                add: "+", sub: "-", mul: "×", div: "÷", mod: "%",
+                iMin: "min", iMax: "max", iAvg: "avg", percent: "%",
+                fAdd: "+", fSub: "-", fMul: "×", fDiv: "÷",
             };
 
             // Helper to update the UI message
             const showMessage = (message, isError = false) => {
-                // This version of the calculator does not have a dedicated message area in the UI
-                // So we'll log to the console for now
+                // For this version, we will just log to the console
                 console.log(isError ? "ERROR: " + message : "STATUS: " + message);
             };
 
@@ -225,7 +234,8 @@
                     // Set up event listeners for the contract
                     contract.on('CalcInt', (user, op, a, b, result) => {
                         if (user.toLowerCase() === userAddress.toLowerCase()) {
-                            display.textContent = result.toString();
+                            displayPrevious.textContent = `${a.toString()} ${operations[op]} ${b.toString()} =`;
+                            displayCurrent.textContent = result.toString();
                             currentNumber = result.toString();
                             previousNumber = '';
                             operation = null;
@@ -236,7 +246,8 @@
 
                     contract.on('CalcFixed', (user, op, a, b, result) => {
                         if (user.toLowerCase() === userAddress.toLowerCase()) {
-                            display.textContent = formatFixed(result);
+                            displayPrevious.textContent = `${formatFixed(a)} ${operations[op]} ${formatFixed(b)} =`;
+                            displayCurrent.textContent = formatFixed(result);
                             currentNumber = formatFixed(result);
                             previousNumber = '';
                             operation = null;
@@ -261,18 +272,24 @@
                     if (waitingForNext) {
                         currentNumber = value;
                         waitingForNext = false;
+                        displayPrevious.textContent = '';
                     } else if (currentNumber === '0') {
                         currentNumber = value;
                     } else {
                         currentNumber += value;
                     }
                 } else if (op) {
+                    if (previousNumber && operation) {
+                        // If an operation is already pending, perform it first
+                        await performCalculation();
+                    }
                     previousNumber = currentNumber;
                     operation = op;
                     waitingForNext = true;
+                    displayPrevious.textContent = `${previousNumber} ${operations[operation]}`;
                 }
 
-                display.textContent = currentNumber;
+                displayCurrent.textContent = currentNumber;
             };
 
             // Function to handle equals button click
@@ -317,13 +334,25 @@
                 previousNumber = '';
                 operation = null;
                 waitingForNext = false;
-                display.textContent = '0';
+                displayCurrent.textContent = '0';
+                displayPrevious.textContent = '';
+            };
+
+            // Function to handle backspace
+            const backspace = () => {
+                if (currentNumber.length > 1) {
+                    currentNumber = currentNumber.slice(0, -1);
+                } else {
+                    currentNumber = '0';
+                }
+                displayCurrent.textContent = currentNumber;
             };
 
             // Event listeners
             connectBtn.addEventListener('click', connectWallet);
             calculateBtn.addEventListener('click', performCalculation);
             clearBtn.addEventListener('click', clearCalculator);
+            backspaceBtn.addEventListener('click', backspace);
 
             allButtons.forEach(button => {
                 button.addEventListener('click', handleButtonClick);
