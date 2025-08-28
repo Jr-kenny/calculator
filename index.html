@@ -24,6 +24,14 @@
             border-radius: 1.5rem;
             padding: 1rem;
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
         }
         .button-grid {
             display: grid;
@@ -98,19 +106,102 @@
             white-space: nowrap;
             font-weight: 500;
         }
+        .menu-dropdown {
+            position: absolute;
+            top: 4.5rem;
+            left: 1rem;
+            z-index: 10;
+            background-color: #3b3b3b;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+            padding: 0.5rem;
+            display: none;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .menu-dropdown.show {
+            display: flex;
+        }
+        .advanced-buttons-grid {
+            display: none;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+        .advanced-mode-active .advanced-buttons-grid {
+            display: grid;
+        }
+        /* History Panel */
+        .history-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #2c2c2c;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+        }
+        .history-panel-active {
+            transform: translateX(0);
+        }
+        .history-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .history-list {
+            flex-grow: 1;
+            overflow-y: auto;
+            border-radius: 0.75rem;
+            background-color: #1c1c1c;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column-reverse; /* Newest history at the top */
+        }
+        .history-item {
+            background-color: #3b3b3b;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+            word-break: break-all;
+        }
+        .history-item-calc {
+            font-weight: bold;
+        }
+        .history-item-tx {
+            font-size: 0.8rem;
+            color: #a0a0a0;
+            margin-top: 0.25rem;
+        }
     </style>
 </head>
 <body>
-    <div class="calculator-container">
+    <div class="calculator-container" id="calculator-container">
 
-        <!-- Connection Status -->
-        <div class="w-full mb-4">
-            <button id="connect-wallet-btn" class="w-full btn btn-blue flex items-center justify-center space-x-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+        <!-- Header with Menu and Connect Wallet buttons -->
+        <div class="header">
+            <button id="menu-btn" class="btn btn-gray w-auto px-4 py-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+            <button id="connect-wallet-btn" class="btn btn-blue text-sm px-4 py-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                 </svg>
                 <span>Connect Wallet</span>
             </button>
+        </div>
+
+        <!-- Menu Dropdown -->
+        <div id="menu-dropdown" class="menu-dropdown">
+            <div id="history-btn" class="menu-dropdown-item">History</div>
+            <div id="advanced-mode-btn" class="menu-dropdown-item">Advanced Mode</div>
         </div>
 
         <!-- Calculator Display -->
@@ -119,11 +210,23 @@
             <span id="display-current" class="display-current">0</span>
         </div>
 
+        <!-- Advanced Buttons Grid - Now includes all on-chain advanced functions -->
+        <div class="advanced-buttons-grid">
+            <button class="btn btn-gray" data-op="iMin">Min</button>
+            <button class="btn btn-gray" data-op="iMax">Max</button>
+            <button class="btn btn-gray" data-op="iAvg">Avg</button>
+            <button class="btn btn-gray" data-op="percent">%</button>
+            <button class="btn btn-gray" data-op="fAdd">+f</button>
+            <button class="btn btn-gray" data-op="fSub">-f</button>
+            <button class="btn btn-gray" data-op="fMul">×f</button>
+            <button class="btn btn-gray" data-op="fDiv">÷f</button>
+        </div>
+
         <!-- Calculator Buttons Grid -->
         <div class="button-grid">
             <button class="btn btn-gray" id="clear-btn">C</button>
             <button class="btn btn-gray" id="backspace-btn">⌫</button>
-            <button class="btn btn-orange" data-op="mod">%</button>
+            <button class="btn btn-orange" data-op="mod">mod</button>
             <button class="btn btn-orange" data-op="div">÷</button>
             
             <button class="btn btn-gray" data-val="7">7</button>
@@ -144,6 +247,22 @@
             <button class="btn btn-gray col-span-2" data-val="0">0</button>
             <button class="btn btn-gray" data-val=".">.</button>
             <button class="btn btn-orange" id="calculate-btn">=</button>
+        </div>
+
+        <!-- History Panel -->
+        <div id="history-panel" class="history-panel">
+            <div class="history-panel-header">
+                <button id="close-history-btn" class="btn btn-gray w-auto px-4 py-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                </button>
+                <h2 class="text-xl font-bold">History</h2>
+                <button id="clear-history-btn" class="btn btn-gray text-sm px-4 py-2">Clear</button>
+            </div>
+            <div id="history-list" class="history-list">
+                <!-- History items will be dynamically added here -->
+            </div>
         </div>
 
     </div>
@@ -174,31 +293,42 @@
                 "function fDiv(int256 a, int256 b) external returns (int256 r)",
             ];
             const SCALE = 1e18;
+            const EXPLORER_URL = "https://sepolia.etherscan.io/tx/";
 
             // DOM elements
+            const calculatorContainer = document.getElementById('calculator-container');
             const connectBtn = document.getElementById('connect-wallet-btn');
+            const menuBtn = document.getElementById('menu-btn');
+            const menuDropdown = document.getElementById('menu-dropdown');
+            const historyBtn = document.getElementById('history-btn');
+            const advancedModeBtn = document.getElementById('advanced-mode-btn');
             const displayPrevious = document.getElementById('display-previous');
             const displayCurrent = document.getElementById('display-current');
             const allButtons = document.querySelectorAll('.btn');
+            const advancedButtonsGrid = document.querySelector('.advanced-buttons-grid');
             const calculateBtn = document.getElementById('calculate-btn');
             const clearBtn = document.getElementById('clear-btn');
             const backspaceBtn = document.getElementById('backspace-btn');
+            const historyPanel = document.getElementById('history-panel');
+            const historyList = document.getElementById('history-list');
+            const closeHistoryBtn = document.getElementById('close-history-btn');
+            const clearHistoryBtn = document.getElementById('clear-history-btn');
 
             let provider, signer, contract, userAddress;
             let currentNumber = '0';
             let previousNumber = '';
             let operation = null;
             let waitingForNext = false;
+            let history = [];
 
             const operations = {
-                add: "+", sub: "-", mul: "×", div: "÷", mod: "%",
+                add: "+", sub: "-", mul: "×", div: "÷", mod: "mod",
                 iMin: "min", iMax: "max", iAvg: "avg", percent: "%",
-                fAdd: "+", fSub: "-", fMul: "×", fDiv: "÷",
+                fAdd: "+f", fSub: "-f", fMul: "×f", fDiv: "÷f",
             };
 
             // Helper to update the UI message
             const showMessage = (message, isError = false) => {
-                // For this version, we will just log to the console
                 console.log(isError ? "ERROR: " + message : "STATUS: " + message);
             };
 
@@ -207,6 +337,53 @@
                 if (!value) return "0";
                 const num = Number(value) / SCALE;
                 return num.toFixed(6).replace(/\.?0+$/, "");
+            };
+            
+            // Function to load history from local storage
+            const loadHistory = () => {
+                const storedHistory = localStorage.getItem('calculatorHistory');
+                if (storedHistory) {
+                    history = JSON.parse(storedHistory);
+                }
+                renderHistory();
+            };
+
+            // Function to render history items
+            const renderHistory = () => {
+                historyList.innerHTML = '';
+                if (history.length === 0) {
+                    historyList.innerHTML = '<p class="text-center text-gray-400">No history yet.</p>';
+                    return;
+                }
+                history.forEach(item => {
+                    const historyItem = document.createElement('div');
+                    historyItem.className = 'history-item';
+                    
+                    const calcSpan = document.createElement('span');
+                    calcSpan.className = 'history-item-calc';
+                    calcSpan.textContent = item.calculation;
+
+                    const txLink = document.createElement('a');
+                    txLink.className = 'history-item-tx block underline';
+                    txLink.href = item.explorerUrl;
+                    txLink.target = '_blank';
+                    txLink.textContent = `Tx: ${item.txHash.substring(0, 10)}...${item.txHash.substring(item.txHash.length - 8)}`;
+
+                    historyItem.appendChild(calcSpan);
+                    historyItem.appendChild(txLink);
+                    historyList.appendChild(historyItem);
+                });
+            };
+
+            // Function to save a new history item
+            const saveHistory = (calculation, txHash) => {
+                history.push({
+                    calculation: calculation,
+                    txHash: txHash,
+                    explorerUrl: `${EXPLORER_URL}${txHash}`
+                });
+                localStorage.setItem('calculatorHistory', JSON.stringify(history));
+                renderHistory();
             };
 
             // Function to handle wallet connection
@@ -225,7 +402,7 @@
                     contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
                     connectBtn.innerHTML = `
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
                             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                         </svg>
                         <span>Connected</span>
@@ -272,25 +449,22 @@
                     if (waitingForNext) {
                         currentNumber = value;
                         waitingForNext = false;
-                        // The previous display is NOT cleared here, which is the fix.
                     } else if (currentNumber === '0' && value !== '.') {
                         currentNumber = value;
                     } else if (value === '.' && currentNumber.includes('.')) {
-                        // Do nothing if a decimal is already present
                         return;
                     } else {
                         currentNumber += value;
                     }
                 } else if (op) {
                     if (previousNumber && operation) {
-                        // If an operation is already pending, perform it first
                         await performCalculation();
                     }
                     previousNumber = currentNumber;
                     operation = op;
                     waitingForNext = true;
                     displayPrevious.textContent = `${previousNumber} ${operations[operation]}`;
-                    currentNumber = '0'; // Clear the current number display
+                    currentNumber = '0';
                 }
 
                 displayCurrent.textContent = currentNumber;
@@ -312,6 +486,9 @@
 
                 try {
                     let tx;
+                    let displayCalc = `${previousNumber} ${operations[operation]} ${currentNumber}`;
+                    let result;
+
                     if (["fAdd", "fSub", "fMul", "fDiv"].includes(operation)) {
                         const scaledA = ethers.parseUnits(previousNumber, 18);
                         const scaledB = ethers.parseUnits(currentNumber, 18);
@@ -322,6 +499,10 @@
 
                     await tx.wait(); // Wait for the transaction to be mined
                     showMessage("Transaction submitted. Waiting for result...");
+                    
+                    // We can now save the history item
+                    saveHistory(displayCalc, tx.hash);
+
                 } catch (err) {
                     console.error("Calculation failed:", err);
                     let errorMessage = "Calculation failed. Check console for details.";
@@ -352,7 +533,41 @@
                 displayCurrent.textContent = currentNumber;
             };
 
-            // Event listeners
+            // Event listeners for the menu
+            menuBtn.addEventListener('click', () => {
+                menuDropdown.classList.toggle('show');
+            });
+            
+            // Close the dropdown if the user clicks outside of it
+            window.addEventListener('click', function(event) {
+                if (!menuBtn.contains(event.target) && !menuDropdown.contains(event.target) && !historyPanel.contains(event.target) && !historyBtn.contains(event.target)) {
+                    menuDropdown.classList.remove('show');
+                }
+            });
+
+            // Handle the advanced mode toggle
+            advancedModeBtn.addEventListener('click', () => {
+                calculatorContainer.classList.toggle('advanced-mode-active');
+                menuDropdown.classList.remove('show');
+            });
+            
+            // Handle history panel toggle and clear
+            historyBtn.addEventListener('click', () => {
+                historyPanel.classList.add('history-panel-active');
+                menuDropdown.classList.remove('show');
+            });
+            
+            closeHistoryBtn.addEventListener('click', () => {
+                historyPanel.classList.remove('history-panel-active');
+            });
+
+            clearHistoryBtn.addEventListener('click', () => {
+                localStorage.removeItem('calculatorHistory');
+                history = [];
+                renderHistory();
+            });
+
+            // Event listeners for the calculator
             connectBtn.addEventListener('click', connectWallet);
             calculateBtn.addEventListener('click', performCalculation);
             clearBtn.addEventListener('click', clearCalculator);
@@ -361,6 +576,9 @@
             allButtons.forEach(button => {
                 button.addEventListener('click', handleButtonClick);
             });
+
+            // Initial load of history
+            loadHistory();
         })();
     </script>
 </body>
