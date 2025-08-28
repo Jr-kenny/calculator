@@ -1,208 +1,329 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Onchain Calculator</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <style>
-    body {
-      background: #111;
-      color: white;
-      font-family: Arial, sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-    }
-    .calculator {
-      width: 350px;
-      background: #1a1a1a;
-      padding: 20px;
-      border-radius: 20px;
-      box-shadow: 0 0 20px rgba(0,0,0,0.5);
-    }
-    #display {
-      width: 100%;
-      height: 80px;
-      font-size: 32px;
-      font-weight: bold;
-      text-align: right;
-      margin-bottom: 15px;
-      border-radius: 10px;
-      padding: 10px;
-      background: #000;
-      color: #0f0;
-      border: none;
-    }
-    .buttons {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-    }
-    button {
-      font-size: 26px;
-      font-weight: bold;
-      padding: 20px;
-      border-radius: 12px;
-      border: none;
-      background: #333;
-      color: white;
-      cursor: pointer;
-      transition: 0.2s;
-    }
-    button:hover {
-      background: #444;
-    }
-    .op {
-      background: #ff9800;
-      color: black;
-    }
-    .op:hover {
-      background: #e68900;
-    }
-    #connectBtn {
-      width: 100%;
-      padding: 15px;
-      font-size: 20px;
-      margin-bottom: 15px;
-      border-radius: 12px;
-      border: none;
-      background: #2196f3;
-      color: white;
-      cursor: pointer;
-    }
-    #connectBtn:hover {
-      background: #1976d2;
-    }
-    @media (max-width: 500px) {
-      .calculator { width: 95%; }
-      button { font-size: 22px; padding: 18px; }
-      #display { font-size: 28px; }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>On-Chain Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1c1c1c; /* A very dark gray */
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+        .calculator-container {
+            width: 100%;
+            max-width: 20rem;
+            background-color: #2c2c2c; /* A slightly lighter dark gray */
+            border-radius: 1.5rem;
+            padding: 1rem;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+        }
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.75rem;
+        }
+        .btn {
+            padding: 1rem 0;
+            border-radius: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .btn:active {
+            transform: scale(0.95);
+        }
+        .btn-gray {
+            background-color: #4b4b4b; /* Darker gray for buttons */
+        }
+        .btn-gray:hover {
+            background-color: #5a5a5a;
+        }
+        .btn-orange {
+            background-color: #ff9500; /* Orange for operation buttons */
+            color: white;
+        }
+        .btn-orange:hover {
+            background-color: #e68a00;
+        }
+        .btn-blue {
+            background-color: #0a84ff; /* Blue for 'Connected' button */
+            color: white;
+            font-weight: bold;
+        }
+        .btn-blue:hover {
+            background-color: #0073e6;
+        }
+        .display {
+            background-color: #000000;
+            color: #00e500; /* Green for numbers */
+            font-size: 3rem;
+            font-weight: 300;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            text-align: right;
+            margin-bottom: 1rem;
+            min-height: 5rem;
+            display: flex;
+            align-items: flex-end;
+            justify-content: flex-end;
+            word-break: break-all;
+            position: relative;
+        }
+        .display-text {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .display-message {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            font-size: 0.75rem;
+            color: #888;
+        }
+    </style>
 </head>
 <body>
-  <div class="calculator">
-    <button id="connectBtn">🔗 Connect Wallet</button>
-    <input type="text" id="display" disabled value="0">
-    <div class="buttons">
-      <button onclick="press('7')">7</button>
-      <button onclick="press('8')">8</button>
-      <button onclick="press('9')">9</button>
-      <button class="op" onclick="setOp('div')">÷</button>
+    <div class="calculator-container">
 
-      <button onclick="press('4')">4</button>
-      <button onclick="press('5')">5</button>
-      <button onclick="press('6')">6</button>
-      <button class="op" onclick="setOp('mul')">×</button>
+        <!-- Connection Status -->
+        <div class="w-full mb-4">
+            <button id="connect-wallet-btn" class="w-full btn btn-blue flex items-center justify-center space-x-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                </svg>
+                <span>Connected</span>
+            </button>
+        </div>
 
-      <button onclick="press('1')">1</button>
-      <button onclick="press('2')">2</button>
-      <button onclick="press('3')">3</button>
-      <button class="op" onclick="setOp('sub')">−</button>
+        <!-- Calculator Display -->
+        <div class="display">
+            <span id="display-number">0</span>
+        </div>
 
-      <button onclick="press('0')">0</button>
-      <button onclick="clearDisplay()">C</button>
-      <button onclick="calculate()">=</button>
-      <button class="op" onclick="setOp('add')">+</button>
+        <!-- Calculator Buttons Grid -->
+        <div class="button-grid">
+            <button class="btn btn-gray" data-val="7">7</button>
+            <button class="btn btn-gray" data-val="8">8</button>
+            <button class="btn btn-gray" data-val="9">9</button>
+            <button class="btn btn-orange" data-op="div">÷</button>
+            
+            <button class="btn btn-gray" data-val="4">4</button>
+            <button class="btn btn-gray" data-val="5">5</button>
+            <button class="btn btn-gray" data-val="6">6</button>
+            <button class="btn btn-orange" data-op="mul">×</button>
+            
+            <button class="btn btn-gray" data-val="1">1</button>
+            <button class="btn btn-gray" data-val="2">2</button>
+            <button class="btn btn-gray" data-val="3">3</button>
+            <button class="btn btn-orange" data-op="sub">-</button>
+            
+            <button class="btn btn-gray col-span-1" data-val="0">0</button>
+            <button class="btn btn-gray" id="clear-btn">C</button>
+            <button class="btn btn-gray" id="calculate-btn">=</button>
+            <button class="btn btn-orange" data-op="add">+</button>
+        </div>
+
     </div>
-  </div>
 
-  <script>
-    const CONTRACT_ADDRESS = "0x0640761a8AaF04Ef63708789189b8beD47AA338A";
-    const CONTRACT_ABI = [
-      "function add(uint256 a, uint256 b) public returns (uint256)",
-      "function sub(uint256 a, uint256 b) public returns (uint256)",
-      "function mul(uint256 a, uint256 b) public returns (uint256)",
-      "function div(uint256 a, uint256 b) public returns (uint256)"
-    ];
+    <!-- Ethers.js library import -->
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.8.1/dist/ethers.umd.min.js"></script>
 
-    let provider, signer, contract;
-    let current = "";
-    let num1 = null;
-    let operator = null;
+    <script>
+        // Immediately invoked async function to encapsulate the script
+        (async function() {
+            // Contract details
+            const CONTRACT_ADDRESS = '0x0640761a8AaF04Ef63708789189b8beD47AA338A';
+            const CONTRACT_ABI = [
+                "event CalcInt(address indexed user, string op, int256 a, int256 b, int256 result)",
+                "event CalcFixed(address indexed user, string op, int256 a, int256 b, int256 result)",
+                "function add(int256 a, int256 b) external returns (int256 r)",
+                "function sub(int256 a, int256 b) external returns (int256 r)",
+                "function mul(int256 a, int256 b) external returns (int256 r)",
+                "function div(int256 a, int256 b) external returns (int256 r)",
+                "function mod(int256 a, int256 b) external returns (int256 r)",
+                "function iMin(int256 a, int256 b) external returns (int256 r)",
+                "function iMax(int256 a, int256 b) external returns (int256 r)",
+                "function iAvg(int256 a, int256 b) external returns (int256 r)",
+                "function percent(int256 a, int256 pct) external returns (int256 r)",
+                "function fAdd(int256 a, int256 b) external returns (int256 r)",
+                "function fSub(int256 a, int256 b) external returns (int256 r)",
+                "function fMul(int256 a, int256 b) external returns (int256 r)",
+                "function fDiv(int256 a, int256 b) external returns (int256 r)",
+            ];
+            const SCALE = 1e18;
 
-    const display = document.getElementById("display");
-    const connectBtn = document.getElementById("connectBtn");
+            // DOM elements
+            const connectBtn = document.getElementById('connect-wallet-btn');
+            const display = document.getElementById('display-number');
+            const allButtons = document.querySelectorAll('.btn');
+            const calculateBtn = document.getElementById('calculate-btn');
+            const clearBtn = document.getElementById('clear-btn');
 
-    async function connectWallet() {
-      if (!window.ethereum) {
-        alert("MetaMask not found!");
-        return;
-      }
-      provider = new ethers.providers.Web3Provider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
-      signer = provider.getSigner();
-      contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+            let provider, signer, contract, userAddress;
+            let currentNumber = '0';
+            let previousNumber = '';
+            let operation = null;
+            let waitingForNext = false;
 
-      // Switch to Fluent Testnet
-      try {
-        await window.ethereum.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: "0x5202" }] // 20994 in hex
-        });
-      } catch (e) {
-        if (e.code === 4902) {
-          await window.ethereum.request({
-            method: "wallet_addEthereumChain",
-            params: [{
-              chainId: "0x5202",
-              chainName: "Fluent Testnet",
-              rpcUrls: ["https://rpc.testnet.fluent.xyz"],
-              nativeCurrency: { name: "Ethereum", symbol: "ETH", decimals: 18 },
-              blockExplorerUrls: ["https://testnet.fluentscan.xyz"]
-            }]
-          });
-        }
-      }
-      connectBtn.innerText = "✅ Connected";
-    }
+            const operations = {
+                add: "add", sub: "sub", mul: "mul", div: "div", mod: "mod",
+                iMin: "iMin", iMax: "iMax", iAvg: "iAvg", percent: "percent",
+                fAdd: "fAdd", fSub: "fSub", fMul: "fMul", fDiv: "fDiv",
+            };
 
-    connectBtn.onclick = connectWallet;
+            // Helper to update the UI message
+            const showMessage = (message, isError = false) => {
+                // This version of the calculator does not have a dedicated message area in the UI
+                // So we'll log to the console for now
+                console.log(isError ? "ERROR: " + message : "STATUS: " + message);
+            };
 
-    function press(num) {
-      current += num;
-      display.value = current;
-    }
+            // Function to format fixed-point numbers
+            const formatFixed = (value) => {
+                if (!value) return "0";
+                const num = Number(value) / SCALE;
+                return num.toFixed(6).replace(/\.?0+$/, "");
+            };
 
-    function clearDisplay() {
-      current = "";
-      num1 = null;
-      operator = null;
-      display.value = "0";
-    }
+            // Function to handle wallet connection
+            const connectWallet = async () => {
+                if (typeof window.ethereum === 'undefined') {
+                    showMessage("MetaMask is not installed. Please install it to use this app.", true);
+                    return;
+                }
+                
+                showMessage("Connecting to wallet...");
+                try {
+                    provider = new ethers.BrowserProvider(window.ethereum);
+                    const accounts = await provider.send("eth_requestAccounts", []);
+                    signer = await provider.getSigner();
+                    userAddress = accounts[0];
+                    contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
-    function setOp(op) {
-      if (current === "") return;
-      num1 = current;
-      current = "";
-      operator = op;
-    }
+                    connectBtn.textContent = "Connected";
+                    
+                    // Set up event listeners for the contract
+                    contract.on('CalcInt', (user, op, a, b, result) => {
+                        if (user.toLowerCase() === userAddress.toLowerCase()) {
+                            display.textContent = result.toString();
+                            currentNumber = result.toString();
+                            previousNumber = '';
+                            operation = null;
+                            waitingForNext = true;
+                            showMessage(`Calculation confirmed: ${op}`);
+                        }
+                    });
 
-    async function calculate() {
-      if (!operator || !num1 || current === "") return;
-      let num2 = current;
-      display.value = "⏳ Sending Tx...";
-      try {
-        let tx;
-        if (operator === "add") tx = await contract.add(num1, num2);
-        if (operator === "sub") tx = await contract.sub(num1, num2);
-        if (operator === "mul") tx = await contract.mul(num1, num2);
-        if (operator === "div") tx = await contract.div(num1, num2);
+                    contract.on('CalcFixed', (user, op, a, b, result) => {
+                        if (user.toLowerCase() === userAddress.toLowerCase()) {
+                            display.textContent = formatFixed(result);
+                            currentNumber = formatFixed(result);
+                            previousNumber = '';
+                            operation = null;
+                            waitingForNext = true;
+                            showMessage(`Calculation confirmed: ${op}`);
+                        }
+                    });
 
-        display.value = "⏳ Waiting Confirm...";
-        let receipt = await tx.wait();
-        display.value = "✅ Tx: " + receipt.transactionHash.slice(0,12) + "...";
-      } catch (err) {
-        console.error(err);
-        display.value = "❌ Tx Failed";
-      }
-      current = "";
-      num1 = null;
-      operator = null;
-    }
-  </script>
+                } catch (err) {
+                    console.error("Failed to connect wallet:", err);
+                    showMessage("Failed to connect wallet. " + err.message, true);
+                }
+            };
+
+            // Function to handle number and operator clicks
+            const handleButtonClick = async (event) => {
+                const button = event.target;
+                const value = button.dataset.val;
+                const op = button.dataset.op;
+
+                if (value) {
+                    if (waitingForNext) {
+                        currentNumber = value;
+                        waitingForNext = false;
+                    } else if (currentNumber === '0') {
+                        currentNumber = value;
+                    } else {
+                        currentNumber += value;
+                    }
+                } else if (op) {
+                    previousNumber = currentNumber;
+                    operation = op;
+                    waitingForNext = true;
+                }
+
+                display.textContent = currentNumber;
+            };
+
+            // Function to handle equals button click
+            const performCalculation = async () => {
+                if (!contract) {
+                    showMessage("Please connect your wallet first.", true);
+                    return;
+                }
+                
+                if (!previousNumber || !operation || !currentNumber) {
+                    showMessage("Invalid calculation.", true);
+                    return;
+                }
+                
+                showMessage("Sending transaction...");
+
+                try {
+                    let tx;
+                    if (["fAdd", "fSub", "fMul", "fDiv"].includes(operation)) {
+                        const scaledA = ethers.parseUnits(previousNumber, 18);
+                        const scaledB = ethers.parseUnits(currentNumber, 18);
+                        tx = await contract[operation](scaledA, scaledB);
+                    } else {
+                        tx = await contract[operation](previousNumber, currentNumber);
+                    }
+
+                    await tx.wait(); // Wait for the transaction to be mined
+                    showMessage("Transaction submitted. Waiting for result...");
+                } catch (err) {
+                    console.error("Calculation failed:", err);
+                    let errorMessage = "Calculation failed. Check console for details.";
+                    if (err.message.includes("revert")) {
+                        errorMessage = "Transaction reverted. Check your inputs (e.g., division by zero).";
+                    }
+                    showMessage(errorMessage, true);
+                }
+            };
+
+            // Function to clear the calculator state
+            const clearCalculator = () => {
+                currentNumber = '0';
+                previousNumber = '';
+                operation = null;
+                waitingForNext = false;
+                display.textContent = '0';
+            };
+
+            // Event listeners
+            connectBtn.addEventListener('click', connectWallet);
+            calculateBtn.addEventListener('click', performCalculation);
+            clearBtn.addEventListener('click', clearCalculator);
+
+            allButtons.forEach(button => {
+                button.addEventListener('click', handleButtonClick);
+            });
+        })();
+    </script>
 </body>
 </html>
