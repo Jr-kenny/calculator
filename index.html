@@ -1,125 +1,153 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>On-Chain Calculator</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Onchain Calculator</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
     body {
-      margin: 0;
-      font-family: 'Arial', sans-serif;
-      background: #000;
-      color: #fff;
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
+      min-height: 100vh;
+      background: #0d0d0d;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      margin: 0;
     }
     .calculator {
-      background: rgba(20, 20, 20, 0.9);
+      width: 100%;
+      max-width: 400px;
+      background: #1a1a1a;
+      border-radius: 16px;
       padding: 20px;
-      border-radius: 20px;
-      box-shadow: 0 0 25px rgba(0, 255, 150, 0.5);
-      width: 320px;
-      max-width: 90vw;
+      box-shadow: 0 0 20px rgba(0,0,0,0.6);
     }
-    .display {
-      background: rgba(0,0,0,0.6);
-      color: #0f0;
-      font-size: 2em;
+    #display {
+      width: 100%;
+      height: 70px;
+      font-size: 28px;
       text-align: right;
-      padding: 15px;
-      border-radius: 10px;
-      margin-bottom: 15px;
-      overflow-x: auto;
+      padding: 10px;
+      background: #000;
+      border: none;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      color: #0f0;
     }
     .buttons {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
+      gap: 12px;
     }
     button {
-      font-size: 1.5em;
+      height: 70px;
+      font-size: 24px;
       font-weight: bold;
-      padding: 20px;
       border: none;
       border-radius: 12px;
-      cursor: pointer;
-      background: rgba(40,40,40,0.8);
+      background: #333;
       color: #fff;
-      transition: all 0.2s;
+      transition: background 0.2s;
     }
     button:hover {
-      background: rgba(0,255,150,0.3);
-      box-shadow: 0 0 10px #0f0;
+      background: #555;
+      cursor: pointer;
     }
-    .wallet {
+    .wide {
+      grid-column: span 2;
+    }
+    #connectWallet {
+      width: 100%;
+      margin-bottom: 15px;
+      padding: 12px;
+      font-size: 18px;
+      border-radius: 12px;
+      border: none;
+      background: #007bff;
+      color: #fff;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    #connectWallet:hover {
+      background: #0056b3;
+    }
+    #txStatus {
       margin-top: 15px;
+      font-size: 16px;
       text-align: center;
-    }
-    .wallet button {
-      background: #0f0;
-      color: #000;
-      font-size: 1em;
-      padding: 12px 20px;
-    }
-    .tx {
-      font-size: 0.9em;
-      margin-top: 10px;
       color: #0f0;
-      word-wrap: break-word;
+      min-height: 20px;
     }
   </style>
 </head>
 <body>
   <div class="calculator">
-    <div id="display" class="display">0</div>
+    <button id="connectWallet">🔗 Connect Wallet</button>
+    <input id="display" disabled />
     <div class="buttons">
-      <button onclick="append('7')">7</button>
-      <button onclick="append('8')">8</button>
-      <button onclick="append('9')">9</button>
-      <button onclick="append('/')">÷</button>
-      <button onclick="append('4')">4</button>
-      <button onclick="append('5')">5</button>
-      <button onclick="append('6')">6</button>
-      <button onclick="append('*')">×</button>
-      <button onclick="append('1')">1</button>
-      <button onclick="append('2')">2</button>
-      <button onclick="append('3')">3</button>
-      <button onclick="append('-')">−</button>
-      <button onclick="append('0')">0</button>
+      <button onclick="appendNumber('7')">7</button>
+      <button onclick="appendNumber('8')">8</button>
+      <button onclick="appendNumber('9')">9</button>
+      <button onclick="setOperation('add')">+</button>
+
+      <button onclick="appendNumber('4')">4</button>
+      <button onclick="appendNumber('5')">5</button>
+      <button onclick="appendNumber('6')">6</button>
+      <button onclick="setOperation('sub')">-</button>
+
+      <button onclick="appendNumber('1')">1</button>
+      <button onclick="appendNumber('2')">2</button>
+      <button onclick="appendNumber('3')">3</button>
+      <button onclick="setOperation('mul')">×</button>
+
+      <button onclick="appendNumber('0')" class="wide">0</button>
       <button onclick="clearDisplay()">C</button>
-      <button onclick="calculate()">=</button>
-      <button onclick="append('+')">+</button>
+      <button onclick="setOperation('div')">÷</button>
+
+      <button onclick="calculate()" class="wide">=</button>
     </div>
-    <div class="wallet">
-      <button onclick="connectWallet()">🔗 Connect Wallet</button>
-      <div id="walletStatus"></div>
-      <div class="tx" id="tx"></div>
-    </div>
+    <div id="txStatus"></div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
   <script>
-    let expression = "";
     let provider, signer, contract;
-
     const contractAddress = "0x0640761a8AaF04Ef63708789189b8beD47AA338A";
-    const abi = [
-      {"inputs":[{"internalType":"uint256","name":"a","type":"uint256"},{"internalType":"uint256","name":"b","type":"uint256"},{"internalType":"string","name":"op","type":"string"}],
-      "name":"calculate",
-      "outputs":[{"internalType":"uint256","name":"","type":"uint256"}],
-      "stateMutability":"nonpayable","type":"function"}
+    const contractABI = [
+      {"inputs":[{"internalType":"int256","name":"a","type":"int256"},{"internalType":"int256","name":"b","type":"int256"}],"name":"add","outputs":[{"internalType":"int256","name":"","type":"int256"}],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"int256","name":"a","type":"int256"},{"internalType":"int256","name":"b","type":"int256"}],"name":"sub","outputs":[{"internalType":"int256","name":"","type":"int256"}],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"int256","name":"a","type":"int256"},{"internalType":"int256","name":"b","type":"int256"}],"name":"mul","outputs":[{"internalType":"int256","name":"","type":"int256"}],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"int256","name":"a","type":"int256"},{"internalType":"int256","name":"b","type":"int256"}],"name":"div","outputs":[{"internalType":"int256","name":"","type":"int256"}],"stateMutability":"nonpayable","type":"function"}
     ];
 
-    function append(value) {
-      expression += value;
-      document.getElementById("display").innerText = expression;
+    let currentInput = "";
+    let firstNumber = null;
+    let operation = null;
+
+    function updateDisplay(val) {
+      document.getElementById("display").value = val;
+    }
+
+    function appendNumber(num) {
+      currentInput += num;
+      updateDisplay(currentInput);
     }
 
     function clearDisplay() {
-      expression = "";
-      document.getElementById("display").innerText = "0";
+      currentInput = "";
+      firstNumber = null;
+      operation = null;
+      updateDisplay("");
+      document.getElementById("txStatus").innerText = "";
+    }
+
+    function setOperation(op) {
+      if (currentInput === "") return;
+      firstNumber = parseInt(currentInput);
+      operation = op;
+      currentInput = "";
+      updateDisplay("");
     }
 
     async function connectWallet() {
@@ -127,30 +155,29 @@
         provider = new ethers.providers.Web3Provider(window.ethereum);
         await provider.send("eth_requestAccounts", []);
         signer = provider.getSigner();
-        contract = new ethers.Contract(contractAddress, abi, signer);
-        document.getElementById("walletStatus").innerText = "✅ Wallet Connected";
+        contract = new ethers.Contract(contractAddress, contractABI, signer);
+        document.getElementById("connectWallet").innerText = "✅ Wallet Connected";
       } else {
-        alert("Install MetaMask or Fluent Wallet!");
+        alert("Please install MetaMask!");
       }
     }
 
     async function calculate() {
+      if (!operation || firstNumber === null || currentInput === "") return;
+      const secondNumber = parseInt(currentInput);
       try {
-        let parts = expression.match(/(\d+)([\+\-\*\/])(\d+)/);
-        if (!parts) return alert("Invalid expression");
-        let a = parts[1];
-        let b = parts[3];
-        let op = parts[2];
-        
-        let tx = await contract.calculate(a, b, op);
-        document.getElementById("tx").innerText = "⏳ Waiting for confirmation...";
-        let receipt = await tx.wait();
-        document.getElementById("tx").innerText = "✅ Tx confirmed: " + receipt.transactionHash;
-      } catch (err) {
-        console.error(err);
-        alert("Error: " + err.message);
+        const tx = await contract[operation](firstNumber, secondNumber);
+        document.getElementById("txStatus").innerText = "⏳ Sending Tx...";
+        const receipt = await tx.wait();
+        document.getElementById("txStatus").innerText = "✅ Tx Hash: " + receipt.transactionHash;
+        clearDisplay();
+      } catch (error) {
+        console.error(error);
+        document.getElementById("txStatus").innerText = "❌ Tx Failed";
       }
     }
+
+    document.getElementById("connectWallet").addEventListener("click", connectWallet);
   </script>
 </body>
 </html>
